@@ -10,6 +10,7 @@ import './assets/style/reset.css'
 import './assets/style/border.css'
 import 'swiper/dist/css/swiper.css'
 import 'vue-slider-component/theme/default.css'
+import vuetify from './plugins/vuetify';
 
 
 Vue.use(VueAwesomeSwiper, /* { default global options } */)
@@ -19,5 +20,6 @@ Vue.config.productionTip = false;
 new Vue({
   router,
   store,
-  render: h => h(App),
+  vuetify,
+  render: h => h(App)
 }).$mount('#app');

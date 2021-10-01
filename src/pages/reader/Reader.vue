@@ -46,18 +46,18 @@
                 this.showController = !this.showController;
             },
             readComicFile(){
-                let files = this.currentFile;
+                let file = this.currentFile;
 
-                if(!(files instanceof File) && !(files instanceof FileList)){
+                if(!(file instanceof File) && !(file instanceof FileList)){
                     this.$router.push('/');
                     return;
                 }
 
-                if(files.length > 1){
-                    this.readComicFileDir(files);
-                    return;
-                }
-                let file = files[0];
+                // if(files.length > 1){
+                //     this.readComicFileDir(files);
+                //     return;
+                // }
+                console.log(file)
 
                 let fileName = file.name;
                 let reg = new RegExp(/(.*)\.(.*?)$/);
@@ -75,22 +75,40 @@
                 }else{
                     this.changeCurrent({currentTitle: fileName});
                 }
-
-                switch (file.type) {
-                    case 'application/x-zip-compressed':
-                    case 'application/zip':
-                        this.readComicFileZip(file);
-                        break;
-                    default:
-                        alert('不支持文件格式'+file.type)
+                
+                this.readComicFileZip(file);
+                // switch (file.type) {
+                //     case 'application/x-zip-compressed':
+                //     case 'application/zip':
+                //     case 'application/x-cbz':
+                        
+                //         break;
+                //     default:
+                //         alert('不支持文件格式'+file.type)
+                // }
+            },
+            isImg(name) {
+                if (name == null) {
+                    return false
                 }
+                const ext = ['.png', '.webp', '.bmp', '.jpg', '.jpeg', '.gif']
+                for (let e of ext) {
+                    if (name.endsWith(e)) {
+                        return true
+                    }
+                }
+                return false
             },
             readComicFileZip(file){
                 let vueObj = this;
                 let blobList = [], fileNum = 0, fileFinishNum = 0;
+                let isImg = this.isImg
                 JSZip.loadAsync(file)                                   // 1) read the Blob
                     .then(function(zip) {
                         zip.forEach(function (relativePath, zipEntry) {  // 2) print entries
+                            if (!isImg(zipEntry.name)) {
+                                return
+                            }
                             fileNum++;
                             if (!zipEntry.dir) {
                                 zipEntry.async('blob').then(function (content) {
@@ -105,8 +123,8 @@
                                 });
                             }
                         });
-                    }, function () {
-                        alert('读取zip出错')
+                    }, function (e) {
+                        alert('读取zip出错' + e)
                     });
             },
             readComicFileDir(files){
@@ -118,12 +136,12 @@
                         blob: window.URL.createObjectURL(new Blob([item])),
                     });
                 });
-                this.sortBlobList(blobList);
+                //this.sortBlobList(blobList);
             },
             sortBlobList(blobList){
                 blobList.sort((x, y) => {
-                    let xName = Number.parseInt(x.name);
-                    let yName = Number.parseInt(y.name);
+                    let xName = x.name
+                    let yName = y.name;
                     if(xName < yName){
                         return -1;
                     }else if(xName === yName){
@@ -138,6 +156,7 @@
                 });
 
                 this.blobList = blobList;
+                console.log(blobList);
             },
             toggleFullScreen () {
                 this.$refs['fullscreen'].toggle() // recommended

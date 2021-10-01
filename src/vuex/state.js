@@ -4,6 +4,7 @@ let currentTotal = 1;
 let currentPage = 1;
 let slot = 'default';
 let slotList = ['default'];
+let url = ''
 try{
     if(localStorage.slot)slot = localStorage.slot;
     if(localStorage.slotList)slotList = JSON.parse(localStorage.slotList);
@@ -23,5 +24,6 @@ export default {
     currentTitle,
     currentTotal,
     currentPage,
-    readerMode
+    readerMode,
+    url
 };

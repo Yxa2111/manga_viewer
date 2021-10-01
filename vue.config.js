@@ -1,5 +1,6 @@
 module.exports = {
     outputDir: 'docs',
+
     chainWebpack: config => {
         config
             .plugin('html')
@@ -7,5 +8,9 @@ module.exports = {
                 args[0].title = 'Manga Viewer';
                 return args;
             })
-    }
+    },
+
+    transpileDependencies: [
+      'vuetify'
+    ]
 };
