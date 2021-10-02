@@ -5,6 +5,9 @@ let currentPage = 1;
 let slot = 'default';
 let slotList = ['default'];
 let url = ''
+let cb_id = ''
+let book_type = ''
+let base_url = ''
 try{
     if(localStorage.slot)slot = localStorage.slot;
     if(localStorage.slotList)slotList = JSON.parse(localStorage.slotList);
@@ -25,5 +28,8 @@ export default {
     currentTotal,
     currentPage,
     readerMode,
-    url
+    url,
+    cb_id,
+    book_type,
+    base_url
 };

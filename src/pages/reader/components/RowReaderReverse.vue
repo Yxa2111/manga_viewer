@@ -2,9 +2,9 @@
     <div class="swiper-container" @click="imageClick">
         <swiper class="swiper-wrapper" :options="swiperOptions" ref="mySwiper" @slideChange="swiperSlideChange" dir="rtl">
             <!-- slides -->
-            <swiper-slide class="swiper-slide" v-for="item of blobList" :key="item.name">
+            <swiper-slide class="swiper-slide" v-for="item of list" :key="item.item.name">
                 <div class="swiper-zoom-container">
-                    <img :src="item.blob" />
+                    <img :src="item.item.blob" />
                 </div>
             </swiper-slide>
             <!-- Optional controls -->
@@ -15,6 +15,7 @@
 
 <script>
     import {mapState, mapMutations, mapGetters} from 'vuex'
+    import constant from '../../../constant'
 
     export default {
         name: "RowReaderReserve",
@@ -43,7 +44,9 @@
                     keyboard: true,
                     mousewheel: true,
                     zoom: true
-                }
+                },
+                list: [],
+                lastIndex: -1
             }
         },
         computed: {
@@ -60,14 +63,37 @@
             },
             swiperSlideChange(){
                 // this.changeCurrent({currentPage: (this.currentTotal - this.swiper.realIndex)});
-                this.changeCurrent({currentPage: this.swiper.realIndex+1});
+                this.changeCurrent({currentPage: this.list[this.swiper.realIndex].page});
             },
+            initDom() {
+                let index = (this.currentPage - 1)
+                index = index - (index % constant.MAX_PAGE_SIZE)
+                if (this.lastIndex >= 0 && parseInt(this.lastIndex / constant.MAX_PAGE_SIZE) == parseInt(index / constant.MAX_PAGE_SIZE)) {
+                    return
+                }
+                this.lastIndex = index
+                this.list = []
+                for (let i = Math.max(index - 1, 0); i < Math.min(this.blobList.length, index + constant.MAX_PAGE_SIZE + 1); i++) {
+                    console.log(`init img dom ${i}`)
+                    this.list.push({item: this.blobList[i], page: i + 1})
+                }
+                console.log(this.list)
+            },
+            getPageIndex(pageNum) {
+                for (let i = 0; i < this.list.length; i++) {
+                    if (this.list[i].page == pageNum) {
+                        return i
+                    }
+                }
+                return 1
+            }
         },
         watch: {
             currentPage(){
+                this.initDom()
                 let swiper = this.swiper;
                 let swiperIndex = swiper.realIndex;
-                let currentPage = this.currentPage - 1;
+                let currentPage = this.getPageIndex(this.currentPage)
                 if(swiperIndex !== currentPage){
                     swiper.slideTo(currentPage, 100, false);
                 }
@@ -80,6 +106,9 @@
             //         swiper.slideTo(currentPage, 100, false);
             //     }
             // }
+        },
+        mounted() {
+            this.initDom()
         }
     }
 </script>

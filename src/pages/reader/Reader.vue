@@ -13,6 +13,9 @@
     import JSZip from 'jszip'
     import fullscreen from 'vue-fullscreen'
     import Vue from 'vue'
+    import {downloadBin} from '../../util'
+    //import { LRUMap } from 'lru_map_yxa2111'
+
     Vue.use(fullscreen);
     //modules
     import ColumnReaderComponent from "./components/ColumnReader";
@@ -20,6 +23,9 @@
     import RowReaderReverseComponent from "./components/RowReaderReverse";
     import ControllerComponent from "./components/Controller";
     import HeaderComponent from "./components/Header";
+    import axios from 'axios'
+    import {Pages} from '../../pages'
+    import One from '../../one'
 
     export default {
         name: "Reader",
@@ -28,6 +34,10 @@
                 fullscreen: false,
                 showController: true,
                 blobList: [],
+                defaultImg: null,
+                pages: null,
+                stream: false,
+                nextLoadPage: new One()
             };
         },
         components: {
@@ -38,14 +48,14 @@
             HeaderComponent
         },
         computed: {
-            ...mapState(['currentFile', 'readerMode', 'currentTitle', 'currentTotal', 'currentPage'])
+            ...mapState(['currentFile', 'readerMode', 'currentTitle', 'currentTotal', 'currentPage', 'base_url', 'cb_id'])
         },
         methods: {
             ...mapMutations(['changeCurrentFile', 'changeCurrent']),
             imageClick(){
                 this.showController = !this.showController;
             },
-            readComicFile(){
+            async readComicFile(){
                 let file = this.currentFile;
 
                 if(!(file instanceof File) && !(file instanceof FileList)){
@@ -53,11 +63,14 @@
                     return;
                 }
 
+                if (file instanceof FileList) {
+                    file = file[0]
+                }
+
                 // if(files.length > 1){
                 //     this.readComicFileDir(files);
                 //     return;
                 // }
-                console.log(file)
 
                 let fileName = file.name;
                 let reg = new RegExp(/(.*)\.(.*?)$/);
@@ -76,16 +89,7 @@
                     this.changeCurrent({currentTitle: fileName});
                 }
                 
-                this.readComicFileZip(file);
-                // switch (file.type) {
-                //     case 'application/x-zip-compressed':
-                //     case 'application/zip':
-                //     case 'application/x-cbz':
-                        
-                //         break;
-                //     default:
-                //         alert('不支持文件格式'+file.type)
-                // }
+                return await this.readComicFileByType(file);
             },
             isImg(name) {
                 if (name == null) {
@@ -99,7 +103,51 @@
                 }
                 return false
             },
-            readComicFileZip(file){
+            readComicFileByType(file){
+                console.log(this.$store.state.book_type)
+                switch (this.$store.state.book_type) {
+                    case 'stream':
+                        return this.readComicFileStream(file)
+                    default:
+                        return this.readComicFileZip(file)
+                        //alert('不支持文件格式'+file.type)
+                }
+            },
+            numToStrPrefix(num) {
+                let s = `${num}`
+                while (s.length < 9) {
+                    s = '0' + s
+                }
+                return s
+            },
+            async readComicFileStream(file) {
+                this.stream = true
+                let text = await file.text()
+                console.log(text)
+                let pages = JSON.parse(text)['pages']
+                let total = 0
+                let chunks = []
+                for (let p of pages) {
+                    chunks.push([p['range'][0], p['range'][1], p['ext']])
+                    total = Math.max(total, p['range'][1])
+                }
+                console.log(`total page: ${total}`)
+                this.blobList = []
+                for (let i = 0; i < total; i++) {
+                    this.blobList.push({
+                        name: `${this.numToStrPrefix(i)}.jpg`,
+                        blob: this.defaultImg
+                    })
+                }
+                this.changeCurrent({
+                    currentTotal: total
+                });
+                console.log(this.blobList)
+                this.pages = new Pages(chunks, 1, (start, end) => this.replaceDefaultImg(start, end))
+                this.loadPageLoop()
+            },
+            async readComicFileZip(file){
+                console.log(file)
                 let vueObj = this;
                 let blobList = [], fileNum = 0, fileFinishNum = 0;
                 let isImg = this.isImg
@@ -164,13 +212,98 @@
             },
             fullscreenChange (fullscreen) {
                 this.fullscreen = fullscreen
+            },
+            replacePageImg(pageNum, bloburl) {
+                pageNum--
+                if (pageNum < 0 || pageNum >= this.blobList.length) {
+                    return
+                }
+                this.blobList[pageNum].blob = bloburl
+            },
+            replaceDefaultImg(start, end) {
+                for (let i = start; i <= end; i++) {
+                    this.replacePageImg(i, this.defaultImg)
+                }
+            },
+            replacePages(start, bloburls) {
+                for (let i = 0; i < bloburls.length; i++) {
+                    console.log(`replace ${bloburls[i]} index ${i}`)
+                    this.replacePageImg(start + i, bloburls[i])
+                }
+            },
+            genStreamURL(ext){
+                return `${this.base_url}/show/${this.cb_id}/${ext}`
+            },
+            filterImg(path) {
+                const img_ext = ['.png', '.webp', '.bmp', '.jpg', '.jpeg']
+                for (let ext of img_ext) {
+                    if (path.endsWith(ext)) {
+                        return !path.endsWith('cover' + ext)
+                    }
+                }
+                return false
+            },
+            async extractZip(file) {
+                let zip = await JSZip.loadAsync(file)
+                let entries = zip.filter(this.filterImg)
+                let blobList = []
+                entries.sort((a, b) => {
+                    return ('' + a.name).localeCompare(b.name)
+                })
+                console.log(entries)
+                for (let e of entries) {
+                    console.log(`extract ${e.name}`)
+                    let blob = await e.async('blob')
+                    blobList.push(blob)
+                }
+                return blobList
+            },
+            async tryLoadPage(pageNum) {
+                if (!this.stream) {
+                    return
+                }
+                console.log(`try load page ${pageNum}`)
+                if (this.pages.page_exist(pageNum)) {
+                    return
+                }
+                let [start, end, ext] = this.pages.get_chunk(pageNum)
+                let file = await downloadBin(this.genStreamURL(ext))
+                let blobList = await this.extractZip(file)
+                file = null
+                if (blobList.length + start - 1 != end) {
+                    console.log(`load page ${pageNum} error: urllist size not match, len(bloblist)=${blobList.length} start=${start} end=${end}`)
+                    blobList = null
+                    return
+                }
+                let urllist = this.pages.add_chunk(start, blobList)
+                console.log(urllist)
+                this.replacePages(start, urllist)
+            },
+            async loadPageLoop() {
+                for (;;) {
+                    let pageNum = await this.nextLoadPage.get()
+                    await this.tryLoadPage(pageNum)
+                }
+            },
+            emitLoadPage(pageNum) {
+                this.nextLoadPage.set(pageNum)
             }
         },
         mounted(){
-            this.readComicFile();
+            axios.get('./default.jpg', {
+                responseType: 'arraybuffer',
+            }).then(resp => {
+                this.defaultImg = window.URL.createObjectURL(new File([resp.data], 'default.jpg'))
+                this.readComicFile().then(() => {
+                    this.tryLoadPage(this.currentPage)
+                })
+            })
             setTimeout(()=>{
                 this.showController = false;
             }, 2000);
+        },
+        watch: {
+            currentPage: function(val) { this.emitLoadPage(val) }
         }
     }
 </script>

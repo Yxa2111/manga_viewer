@@ -11,6 +11,7 @@
     "better-scroll": "^1.15.2",
     "core-js": "^3.6.4",
     "jszip": "^3.2.2",
+    "lru_map_yxa2111": "^0.4.3",
     "minimist": ">=1.2.2",
     "stylus": "^0.54.7",
     "stylus-loader": "^3.0.2",
