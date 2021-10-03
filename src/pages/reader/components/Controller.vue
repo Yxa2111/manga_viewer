@@ -28,7 +28,7 @@
                 全屏
             </div>
             <div class="controller-btn" @click="back">
-                返回
+                跳页
             </div>
         </div>
     </div>

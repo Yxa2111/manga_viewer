@@ -34,6 +34,7 @@ class LruBlob extends LRUMap {
     constructor(limit, del_cb) {
         del_cb = del_cb || (() => {})
         super(limit, null, e => e.size, (entry) => {
+            console.log(`revoke, current size ${this.size} limit ${this.limit}`)
             let start = entry.destroy()
             del_cb(start)
         })

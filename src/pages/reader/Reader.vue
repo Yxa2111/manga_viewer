@@ -272,6 +272,9 @@
                     return
                 }
                 let [start, end, ext] = this.pages.get_chunk(pageNum)
+                if (start == 0) {
+                    return
+                }
                 let file = await downloadBin(this.genStreamURL(ext))
                 let blobList = await this.extractZip(file)
                 file = null
@@ -290,8 +293,23 @@
                     await this.tryLoadPage(pageNum)
                 }
             },
-            emitLoadPage(pageNum) {
-                this.nextLoadPage.set(pageNum)
+            genPageLoadPlan(pageNum) {
+                if (!this.pages.page_exist(pageNum)) {
+                    return pageNum
+                }
+                let [start, end] = this.pages.get_chunk(pageNum)
+                if (start > 0 && pageNum >= start + (end - start + 1) / 2) {
+                    // maybe ov
+                    return end + 1
+                }
+                return 0
+            },
+            triggerLoadPage(pageNum) {
+                pageNum = this.genPageLoadPlan(pageNum)
+                if (pageNum > 0) {
+                    console.log(`current page plan ${pageNum}`)
+                    this.nextLoadPage.set(pageNum)
+                }
             },
             changeShowDialog(v) {
                 this.showDialog = v
@@ -311,7 +329,7 @@
             }, 2000);
         },
         watch: {
-            currentPage: function(val) { this.emitLoadPage(val) }
+            currentPage: function(val) { this.triggerLoadPage(val) }
         }
     }
 </script>
