@@ -14,7 +14,7 @@ export default class One {
         if (!this.val) {
             await new Promise(res => {
                 this.notEmpty = res
-            })    
+            })
         }
         let ret = this.val
         this.val = null

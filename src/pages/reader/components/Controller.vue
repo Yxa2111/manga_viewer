@@ -10,6 +10,7 @@
                         v-model="page"
                         :drag-on-click="true"
                         :direction="vueSliderDirection"
+                        :tooltip="'always'"
                 ></vue-slider>
             </div>
         </div>
@@ -38,6 +39,7 @@
 
     export default {
         name: "Controller",
+        props: ['showDialog'],
         computed: {
             ...mapState(['readerMode', 'currentTitle', 'currentTotal', 'currentPage']),
             page: {
@@ -70,7 +72,7 @@
         methods: {
             ...mapMutations(['changeReaderMode', 'changeCurrent']),
             back(){
-                this.$router.push('/');
+                this.$emit('changeShowDialog', true)
             },
             toggleFullScreen(){
                 this.$emit('toggleFullScreen');
@@ -108,7 +110,7 @@
             display flex
             .controller-slide-text
                 float: left
-                width: 1.2rem
+                width: 1.4rem
                 overflow hidden
                 text-align center
                 padding-top .05rem

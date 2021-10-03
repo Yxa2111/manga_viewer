@@ -1,9 +1,10 @@
 <template>
-    <div>
+    <div data-app>
         <fullscreen ref="fullscreen" @change="fullscreenChange">
             <header-component v-show="showController"></header-component>
             <div :blobList="blobList" :is="readerMode" @imageclick="imageClick" v-if="blobList.length"></div>
-            <controller-component v-show="showController" @toggleFullScreen="toggleFullScreen"></controller-component>
+            <controller-component v-show="showController" @toggleFullScreen="toggleFullScreen" v-bind:showDialog="showDialog" v-on:changeShowDialog="changeShowDialog($event)"></controller-component>
+            <dialog-silder v-model="showDialog"></dialog-silder>
         </fullscreen>
     </div>
 </template>
@@ -14,6 +15,7 @@
     import fullscreen from 'vue-fullscreen'
     import Vue from 'vue'
     import {downloadBin} from '../../util'
+    import con from '../../constant'
     //import { LRUMap } from 'lru_map_yxa2111'
 
     Vue.use(fullscreen);
@@ -26,6 +28,7 @@
     import axios from 'axios'
     import {Pages} from '../../pages'
     import One from '../../one'
+    import DialogSilder from './components/DialogSilder'
 
     export default {
         name: "Reader",
@@ -37,7 +40,8 @@
                 defaultImg: null,
                 pages: null,
                 stream: false,
-                nextLoadPage: new One()
+                nextLoadPage: new One(),
+                showDialog: false,
             };
         },
         components: {
@@ -45,7 +49,8 @@
             RowReaderComponent,
             RowReaderReverseComponent,
             ControllerComponent,
-            HeaderComponent
+            HeaderComponent,
+            DialogSilder
         },
         computed: {
             ...mapState(['currentFile', 'readerMode', 'currentTitle', 'currentTotal', 'currentPage', 'base_url', 'cb_id'])
@@ -143,7 +148,7 @@
                     currentTotal: total
                 });
                 console.log(this.blobList)
-                this.pages = new Pages(chunks, 1, (start, end) => this.replaceDefaultImg(start, end))
+                this.pages = new Pages(chunks, con.PAGE_CACHE_SIZE, (start, end) => this.replaceDefaultImg(start, end))
                 this.loadPageLoop()
             },
             async readComicFileZip(file){
@@ -287,6 +292,9 @@
             },
             emitLoadPage(pageNum) {
                 this.nextLoadPage.set(pageNum)
+            },
+            changeShowDialog(v) {
+                this.showDialog = v
             }
         },
         mounted(){
