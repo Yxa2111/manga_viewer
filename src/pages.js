@@ -1,5 +1,6 @@
 import { LRUMap } from "lru_map_yxa2111"
 
+// BlobEntry handle blob lifetime
 class BlobEntry {
     constructor(blobs, id) {
         let size = 0
@@ -7,6 +8,7 @@ class BlobEntry {
         for (let b of blobs) {
             if (b instanceof Blob) {
                 size += b.size
+                // ref cleared
                 b = window.URL.createObjectURL(b)
                 this.url.push(b)
             }
@@ -84,6 +86,7 @@ export class Pages {
         p.exist = false
         return p
     }
+    // add blobs to chunk, return blob url, original blob ref must be cleared
     add_chunk(start, chunk_blobs) {
         let ch = this._find_chunk(start)
         if (ch == null) {
@@ -96,6 +99,8 @@ export class Pages {
     }
     get_chunk(pageNum) {
         let p = this._find_chunk(pageNum)
+        // it is a visit, so it must reflect in lru
+        this.blobs.get(p.start)
         if (!p) {
             return [0, 0, '']
         }
@@ -113,6 +118,7 @@ class chunk {
     constructor(start, end, tag, exist) {
         this.start = start
         this.end = end
+        // usually it's chunk extension, we need it when we load the chunk
         this.tag = tag
         this.exist = exist
     }
