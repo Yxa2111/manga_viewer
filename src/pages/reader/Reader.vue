@@ -14,7 +14,6 @@
     import JSZip from 'jszip'
     import fullscreen from 'vue-fullscreen'
     import Vue from 'vue'
-    import {downloadBin} from '../../util'
     import con from '../../constant'
     //import { LRUMap } from 'lru_map_yxa2111'
 
@@ -27,8 +26,8 @@
     import HeaderComponent from "./components/Header";
     import axios from 'axios'
     import {Pages} from '../../pages'
-    import One from '../../one'
     import DialogSilder from './components/DialogSilder'
+    import {PageLoader} from './PageLoader'
 
     export default {
         name: "Reader",
@@ -40,8 +39,8 @@
                 defaultImg: null,
                 pages: null,
                 stream: false,
-                nextLoadPage: new One(),
                 showDialog: false,
+                loader: null
             };
         },
         components: {
@@ -149,7 +148,8 @@
                 });
                 console.log(this.blobList)
                 this.pages = new Pages(chunks, con.PAGE_CACHE_SIZE, (start, end) => this.replaceDefaultImg(start, end))
-                this.loadPageLoop()
+                this.loader = new PageLoader(this, this.$store.state)
+                this.loader.Start()
             },
             async readComicFileZip(file){
                 console.log(file)
@@ -236,79 +236,21 @@
                     this.replacePageImg(start + i, bloburls[i])
                 }
             },
-            genStreamURL(ext){
-                return `${this.base_url}/show/${this.cb_id}/${ext}`
-            },
-            filterImg(path) {
-                const img_ext = ['.png', '.webp', '.bmp', '.jpg', '.jpeg']
-                for (let ext of img_ext) {
-                    if (path.endsWith(ext)) {
-                        return !path.endsWith('cover' + ext)
+            async pageLoadPlan(pageNum) {
+                try {
+                    let session = this.loader.NewSession()
+                    if (!this.pages.page_exist(pageNum)) {
+                        await session.Req(pageNum)
                     }
-                }
-                return false
-            },
-            async extractZip(file) {
-                let zip = await JSZip.loadAsync(file)
-                let entries = zip.filter(this.filterImg)
-                let blobList = []
-                entries.sort((a, b) => {
-                    return ('' + a.name).localeCompare(b.name)
-                })
-                console.log(entries)
-                for (let e of entries) {
-                    console.log(`extract ${e.name}`)
-                    let blob = await e.async('blob')
-                    blobList.push(blob)
-                }
-                return blobList
-            },
-            async tryLoadPage(pageNum) {
-                if (!this.stream) {
-                    return
-                }
-                console.log(`try load page ${pageNum}`)
-                if (this.pages.page_exist(pageNum)) {
-                    return
-                }
-                let [start, end, ext] = this.pages.get_chunk(pageNum)
-                if (start == 0) {
-                    return
-                }
-                let file = await downloadBin(this.genStreamURL(ext))
-                let blobList = await this.extractZip(file)
-                file = null
-                if (blobList.length + start - 1 != end) {
-                    console.log(`load page ${pageNum} error: urllist size not match, len(bloblist)=${blobList.length} start=${start} end=${end}`)
-                    blobList = null
-                    return
-                }
-                let urllist = this.pages.add_chunk(start, blobList)
-                console.log(urllist)
-                this.replacePages(start, urllist)
-            },
-            async loadPageLoop() {
-                for (;;) {
-                    let pageNum = await this.nextLoadPage.get()
-                    await this.tryLoadPage(pageNum)
-                }
-            },
-            genPageLoadPlan(pageNum) {
-                if (!this.pages.page_exist(pageNum)) {
-                    return pageNum
-                }
-                let [start, end] = this.pages.get_chunk(pageNum)
-                if (start > 0 && pageNum >= start + (end - start + 1) / 2) {
-                    // maybe ov
-                    return end + 1
-                }
-                return 0
-            },
-            triggerLoadPage(pageNum) {
-                pageNum = this.genPageLoadPlan(pageNum)
-                if (pageNum > 0) {
-                    console.log(`current page plan ${pageNum}`)
-                    this.nextLoadPage.set(pageNum)
+                    console.log(`page ${pageNum} load fin`)
+                    let [start, end] = this.pages.get_chunk(pageNum)
+                    console.log(`${start} ${end} ${pageNum}`)
+                    if (start > 0 && pageNum >= start + parseInt((end - start + 1) / 2)) {
+                        console.log(`preload next page ${end + 1}`)
+                        await session.Req(end + 1)
+                    }
+                } catch {
+                    // maybe timeout
                 }
             },
             changeShowDialog(v) {
@@ -321,7 +263,7 @@
             }).then(resp => {
                 this.defaultImg = window.URL.createObjectURL(new File([resp.data], 'default.jpg'))
                 this.readComicFile().then(() => {
-                    this.tryLoadPage(this.currentPage)
+                    this.pageLoadPlan(this.currentPage)
                 })
             })
             setTimeout(()=>{
@@ -329,7 +271,7 @@
             }, 2000);
         },
         watch: {
-            currentPage: function(val) { this.triggerLoadPage(val) }
+            currentPage: function(val) { if (this.stream) {this.pageLoadPlan(val)} }
         }
     }
 </script>

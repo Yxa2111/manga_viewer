@@ -1,7 +1,6 @@
-
 export default class One {
     constructor() {
-        this.val
+        this.val = null
         this.notEmpty = null
     }
     set(val) {

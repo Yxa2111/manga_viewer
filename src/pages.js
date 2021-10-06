@@ -100,11 +100,11 @@ export class Pages {
     }
     get_chunk(pageNum) {
         let p = this._find_chunk(pageNum)
-        // it is a visit, so it must reflect in lru
-        this.blobs.get(p.start)
         if (!p) {
             return [0, 0, '']
         }
+        // it is a visit, so it must reflect in lru
+        this.blobs.get(p.start)
         return [p.start, p.end, p.tag]
     }
     revoke_all() {
