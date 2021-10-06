@@ -34,14 +34,13 @@
             if (url != null) {
                 console.log(url)
                 this.$store.state.url = url
-                let url_pattern = /([^n]+)\/show\/(\d+)\/([^n]+)/
+                let url_pattern = /([^n]*)\/show\/(\d+)\/([^n]+)/
                 let result = url.match(url_pattern)
-                if (result.length >= 4) {
+                if (result && result.length >= 4) {
                     this.$store.state.cb_id = result[2]
                     this.$store.state.book_type = result[3]
                     this.$store.state.base_url = result[1]
                 }
-                console.log(result)
                 this.$router.push('/loading')
             }
         }
