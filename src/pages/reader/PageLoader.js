@@ -2,7 +2,7 @@ import JSZip from 'jszip'
 import One from '../../one'
 import {downloadBin} from '../../util'
 
-async function extractZip(file) {
+async function extractZip(file, onProgress = null) {
     let zip = await JSZip.loadAsync(file)
     let entries = zip.filter(filterImg)
     let blobList = []
@@ -10,10 +10,15 @@ async function extractZip(file) {
         return ('' + a.name).localeCompare(b.name)
     })
     console.log(entries)
+    let cnt = 0
     for (let e of entries) {
         console.log(`extract ${e.name}`)
         let blob = await e.async('blob')
         blobList.push(blob)
+        ++cnt
+        if (onProgress) {
+            onProgress({loaded: cnt, total: entries.length, name: e.name})
+        }
     }
     return blobList
 }
@@ -69,8 +74,30 @@ class PageLoader {
         if (start == 0) {
             return this.handleResp(ctx, new Resp(StatusFail))
         }
-        let file = await downloadBin(this.genStreamURL(ext))
-        let blobList = await extractZip(file)
+        this.state.loadingDetail = {
+            name: ext,
+            loaded: 0,
+            total: 0,
+        }
+        let file = await downloadBin(this.genStreamURL(ext), (e) => {
+            this.state.loadingDetail = {
+                name: ext,
+                loaded: e.loaded,
+                total: e.total,
+                status: 'Load',
+            }
+        })
+
+        this.state.loadingDetail = null
+        let blobList = await extractZip(file, (e) => {
+            this.state.loadingDetail = {
+                name: ext,
+                loaded: e.loaded,
+                total: e.total,
+                status: 'Extract',
+            }
+        })
+        this.state.loadingDetail = null
         file = null
         if (blobList.length + start - 1 != end) {
             console.log(`load page ${pageNum} error: urllist size not match, len(bloblist)=${blobList.length} start=${start} end=${end}`)

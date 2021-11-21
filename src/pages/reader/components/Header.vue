@@ -1,6 +1,6 @@
 <template>
     <div class="header-container">
-        {{currentTitle}}
+        {{loading}} {{currentTitle}}
     </div>
 </template>
 
@@ -10,7 +10,25 @@
     export default {
         name: "Header",
         computed: {
-            ...mapState(['currentTitle']),
+            ...mapState(['currentTitle', 'loadingDetail']),
+        },
+        data () {
+            return {
+                loading: ''
+            }
+        },
+        watch: {
+            loadingDetail: function(detail) {
+                if (detail == null) {
+                    this.loading = ''
+                } else {
+                    if (detail.total == 0) {
+                        this.loading = `${detail.status} ${detail.name}`
+                    } else {
+                        this.loading = `${detail.status} ${detail.name}: ${Number((detail.loaded / detail.total * 100).toFixed(1))}%`
+                    }
+                }
+            }
         }
     }
 </script>

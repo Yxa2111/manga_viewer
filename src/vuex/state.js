@@ -2,6 +2,7 @@ let readerMode = 'row-reader-component';
 let currentTitle = '';
 let currentTotal = 1;
 let currentPage = 1;
+let loadingDetail = null;
 let slot = 'default';
 let slotList = ['default'];
 let url = ''
@@ -27,6 +28,7 @@ export default {
     currentTitle,
     currentTotal,
     currentPage,
+    loadingDetail,
     readerMode,
     url,
     cb_id,
