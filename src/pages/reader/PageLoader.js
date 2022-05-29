@@ -78,6 +78,7 @@ class PageLoader {
             name: ext,
             loaded: 0,
             total: 0,
+            status: 'Prepare'
         }
         let file = await downloadBin(this.genStreamURL(ext), (e) => {
             this.state.loadingDetail = {
