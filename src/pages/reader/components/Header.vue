@@ -1,5 +1,20 @@
 <template>
     <div class="header-container">
+        <a v-bind:href="'../../book/' + cb_id">
+        <v-btn
+        rounded
+        plain
+        dark
+        left
+        absolute
+        height=".86rem"
+        width=".86rem"
+      >
+        <v-icon dark>
+          mdi-arrow-left
+        </v-icon>
+      </v-btn>
+      </a>
         {{loading}} {{currentTitle}}
     </div>
 </template>
@@ -10,10 +25,11 @@
     export default {
         name: "Header",
         computed: {
-            ...mapState(['currentTitle', 'loadingDetail']),
+            ...mapState(['currentTitle', 'loadingDetail', 'cb_id']),
         },
         data () {
             return {
+                cb_id: this.$store.state.cb_id,
                 loading: ''
             }
         },
