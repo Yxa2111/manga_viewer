@@ -76,7 +76,7 @@
             },
             toggleFullScreen(){
                 this.$emit('toggleFullScreen');
-            }
+            },
         }
     }
 </script>

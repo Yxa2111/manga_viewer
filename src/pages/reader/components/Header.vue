@@ -1,12 +1,32 @@
 <template>
-  <div class="header-container">
-    <a v-bind:href="'../../book/' + cb_id">
-      <v-btn rounded plain dark left absolute height=".86rem" width=".86rem">
-        <v-icon dark> mdi-arrow-left </v-icon>
-      </v-btn>
-    </a>
-    {{ loading }} {{ currentTitle }}
-  </div>
+  <v-container class="header-container">
+    <v-row align="center" dense>
+      <!-- <v-spacer></v-spacer> -->
+      <v-col md="10" cols="12">
+        <p class="header-title text-justify">{{ loading }} {{ currentTitle }}</p>
+      </v-col>
+      <v-col md="1">
+        <a v-bind:href="'../../book/' + book_id">
+          <v-btn rounded plain dark height=".86rem" width=".86rem">
+            <v-icon dark> mdi-arrow-left </v-icon>
+          </v-btn>
+        </a>
+      </v-col>
+      <v-col md="1">
+        <v-btn
+          rounded
+          plain
+          dark
+          height=".86rem"
+          width=".86rem"
+          @click="showRelated"
+        >
+          <v-icon dark> mdi-book </v-icon>
+        </v-btn>
+      </v-col>
+      <!-- <v-spacer></v-spacer> -->
+    </v-row>
+  </v-container>
 </template>
 
 <script>
@@ -19,7 +39,7 @@ export default {
   },
   data() {
     return {
-      cb_id: this.$store.state.cb_id,
+      book_id: this.$store.state.cb_id,
       loading: "",
     };
   },
@@ -38,6 +58,17 @@ export default {
       }
     },
   },
+  methods: {
+    showRelated() {
+      this.$emit("changeShowRelated", true);
+    },
+    shortenTitle(s) {
+      if (s.length > 12) {
+        return s.substr(0, 12) + "...";
+      }
+      return s;
+    },
+  },
 };
 </script>
 
@@ -50,8 +81,13 @@ export default {
   left: 0;
   position: fixed;
   z-index: 2;
-  height: 0.86rem;
-  line-height: 0.86rem;
+  // height: 0.86rem;
+  // line-height: 0.86rem;
   text-align: center;
+}
+.header-title {
+  margin-top: 0.86em
+  font-family: Roboto,sans-serif!important;
+  font-weight: 300;
 }
 </style>
