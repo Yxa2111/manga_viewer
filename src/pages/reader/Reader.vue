@@ -1,11 +1,13 @@
 <template>
     <div data-app>
         <fullscreen ref="fullscreen" @change="fullscreenChange">
-            <header-component v-show="showController" @changeShowRelated="changeShowRelated($event)"></header-component>
+            <header-component v-show="showController" @changeShowRelated="changeShowRelated" @changeShelf="changeShelf" @createShelf="createShelf"></header-component>
             <div :blobList="blobList" :is="readerMode" @imageclick="imageClick" v-if="blobList.length"></div>
             <controller-component v-show="showController" @toggleFullScreen="toggleFullScreen" v-bind:showDialog="showDialog" v-on:changeShowDialog="changeShowDialog($event)"></controller-component>
             <dialog-silder v-model="showDialog"></dialog-silder>
             <related-books v-model="showRelated" :related="related" :author="relatedAuthor"></related-books>
+            <v-snackbar v-model="showSnackBar" :timeout=2000 height="1.2em" elevation="24">
+                <div style="font-family: Roboto,sans-serif!important; font-size: 0.36em; text-align: center;">{{snackbarMsg}}</div></v-snackbar>
         </fullscreen>
     </div>
 </template>
@@ -45,7 +47,9 @@
                 showRelated: false,
                 related: null,
                 relatedAuthor: null,
-                loader: null
+                loader: null,
+                snackbarMsg: '',
+                showSnackBar: false,
             };
         },
         components: {
@@ -58,7 +62,7 @@
             RelatedBooks
         },
         computed: {
-            ...mapState(['currentFile', 'readerMode', 'currentTitle', 'currentTotal', 'currentPage', 'base_url', 'cb_id'])
+            ...mapState(['currentFile', 'readerMode', 'currentTitle', 'currentTotal', 'currentPage', 'base_url', 'cb_id', 'shelfList'])
         },
         methods: {
             ...mapMutations(['changeCurrentFile', 'changeCurrent']),
@@ -266,13 +270,75 @@
                 this.showRelated = v
                 this.relatedAjax()
             },
+            changeShowSnackBar(show, msg) {
+                this.showSnackBar = show
+                this.snackbarMsg = msg
+            },
+            async createShelf(shelfName) {
+                console.log('creating shelf '+ shelfName)
+                try {
+                    let form = new FormData()
+                    form.append('title', shelfName)
+                    let resp = await axios.post('/shelf/create', form, {
+                        headers: { "Content-Type": "multipart/form-data" },
+                    })
+                    console.log(resp)
+                } catch(e) {
+                    console.log(e)
+                    this.changeShowSnackBar(true, 'Create Shelf ' + shelfName + ' failed')
+                    await this.getShelfList()
+                    return
+                }
+                await this.getShelfList()
+                let createShelfID = -1;
+                for (const item of this.$store.state.shelfList) {
+                    console.log('check', item.name, shelfName, typeof(item.name), typeof(shelfName))
+                    if (item.name == shelfName) {
+                        createShelfID = item.id
+                    }
+                }
+                if (createShelfID == -1) {
+                    this.changeShowSnackBar(true, 'Create Shelf ' + shelfName + ' failed. New Shelf not exist.')
+                    return
+                }
+                await this.changeShelf(createShelfID, this.$store.state.cb_id, shelfName, true)
+            },
+            async changeShelf(shelfID, bookID, shelfName, state) {
+                console.log(shelfID, bookID, state)
+                if (state) {
+                    try {
+                        await axios.get('/shelf/add/' + shelfID + '/' + bookID)
+                    } catch (e) {
+                        console.log(e)
+                        this.changeShowSnackBar(true, 'Add to Shelf ' + shelfName + ' failed')
+                    }
+                    await this.getShelfList()
+                    this.changeShowSnackBar(true, 'Add to Shelf ' + shelfName + ' success')
+                } else {
+                    try {
+                        await axios.get('/shelf/remove/' + shelfID + '/' + bookID)
+                    } catch (e) {
+                        console.log(e)
+                        this.changeShowSnackBar(true, 'Remove from Shelf ' + shelfName + ' failed')
+                    }
+                    await this.getShelfList()
+                    this.changeShowSnackBar(true, 'Remove from Shelf ' + shelfName + ' success')
+                }
+            },
+            async getShelfList() {
+                const resp = await axios.get('/shelf/list/' + this.$store.state.cb_id)
+                console.log(resp.data)
+                this.$store.state.shelfList = resp.data
+                // this.$store.state.shelfList = [
+                //     { name: 'Click Me', id: 233, size: 2, contains: true },
+                //     { name: 'Click Me', id: 234, size: 3, contains: false },
+                //     { name: 'Click Me', id: 235, size: 3, contains: true },
+                //     { name: 'Click Me 2', id: 236, size: 3, contains: false },
+                // ]
+            },
             async relatedAjax() {
                 let resp = await axios.get('/ajax/relatedbooks/' + this.$store.state.cb_id)
-                console.log(resp.data)
                 this.$data.related = resp.data
-                // setTimeout(()=>{
-                //     this.$data.related = {"authors": [{"id": 23, "name": "abgrund (Saikawa Yusa)", "href": "/author/233"}, {"id": 24, "name": "abgrund (Saikawa Yusa)", "href": "/author/233"}], "items": [{"id": 235, "shorten_title": "Fuun na Tabibito no Hanashi", "title": "(COMIC1\u260612) [abgrund (Saikawa Yusa)] Fuun na Tabibito no Hanashi (Kino no Tabi) [Chinese] [\u65e0\u6bd2\u6c49\u5316\u7ec4]", "langmark": "CN", "url": "/read/235/stream", "cover": "/cover/1.jpg", "authors": [{"id": 3, "href": "/author/new/3", "name": "saikawa yusa , udk"}]}, {"id": 136, "shorten_title": "Fuun na Tabibito no Hanashi 2", "title": "(C93) [abgrund (Saikawa Yusa)] Fuun na Tabibito no Hanashi 2 (Kino no Tabi) [Chinese] [\u5bc2\u6708\u6c49\u5316\u7ec4]", "langmark": "CN", "url": "/read/136/stream", "cover": "/cover/2.jpg", "authors": [{"id": 3, "href": "/author/new/3", "name": "saikawa yusa , udk"}]}, {"id": 22333, "shorten_title": "Fuun na Tabibito no Hanashi 2", "title": "(C93) [abgrund (Saikawa Yusa)] Fuun na Tabibito no Hanashi 2 (Kino no Tabi) [Chinese] [\u65e0\u6bd2\u6c49\u5316\u7ec4]", "langmark": "CN", "url": "/read/132/stream", "cover": "/cover/1.jpg", "authors": [{"id": 3, "href": "/author/new/3", "name": "saikawa yusa , udk"}]}, {"id": 4888, "shorten_title": "Fuun na Tabibito no Hanashi 2", "title": "(C93) [abgrund (Saikawa Yusa)] Fuun na Tabibito no Hanashi 2 (Kino no Tabi) [Chinese] [\u65e0\u6bd2\u6c49\u5316\u7ec4]", "langmark": "CN", "url": "/read/132/stream", "cover": "/cover/1.jpg", "authors": [{"id": 3, "href": "/author/new/3", "name": "saikawa yusa , udk"}]}, {"id": 132, "shorten_title": "Fuun na Tabibito no Hanashi 2", "title": "(C93) [abgrund (Saikawa Yusa)] Fuun na Tabibito no Hanashi 2 (Kino no Tabi) [Chinese] [\u65e0\u6bd2\u6c49\u5316\u7ec4]", "langmark": "CN", "url": "/read/132/stream", "cover": "/cover/1.jpg", "authors": [{"id": 3, "href": "/author/new/3", "name": "saikawa yusa , udk"}]}]}
-                // }, 3000)
             }
         },
         mounted(){
@@ -280,7 +346,7 @@
                 responseType: 'arraybuffer',
             }).then(resp => {
                 this.defaultImg = window.URL.createObjectURL(new File([resp.data], 'default.jpg'))
-                this.readComicFile().then(() => {
+                this.readComicFile().then(this.getShelfList).then(() => {
                     this.pageLoadPlan(this.currentPage)
                 })
             })

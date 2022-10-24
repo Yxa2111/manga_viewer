@@ -9,6 +9,7 @@ let url = ''
 let cb_id = ''
 let book_type = ''
 let base_url = ''
+let shelfList = []
 try{
     if(localStorage.slot)slot = localStorage.slot;
     if(localStorage.slotList)slotList = JSON.parse(localStorage.slotList);
@@ -33,5 +34,6 @@ export default {
     url,
     cb_id,
     book_type,
-    base_url
+    base_url,
+    shelfList,
 };
