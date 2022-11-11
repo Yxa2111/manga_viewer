@@ -279,6 +279,7 @@
                 try {
                     let form = new FormData()
                     form.append('title', shelfName)
+                    form.append('no_redirect', '1')
                     let resp = await axios.post('/shelf/create', form, {
                         headers: { "Content-Type": "multipart/form-data" },
                     })
